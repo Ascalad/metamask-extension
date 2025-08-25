@@ -1022,7 +1022,7 @@ async function setupMocking(
    * @param request
    */
   const portfolioRequestsMatcher = (request) =>
-    request.headers.referer === 'https://app.metamask.io/';
+    request.headers.referer === 'https://portfolio.metamask.io/';
 
   /**
    * Tests a request against private domains and returns a set of generic hostnames that
