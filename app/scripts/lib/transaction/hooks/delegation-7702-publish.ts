@@ -18,8 +18,8 @@ import {
   getDeleGatorEnvironment,
 } from '../../../../../shared/lib/delegation';
 import { exactExecution } from '../../../../../shared/lib/delegation/caveatBuilder/exactExecutionBuilder';
+import { limitedCalls } from '../../../../../shared/lib/delegation/caveatBuilder/limitedCallsBuilder';
 import { specificActionERC20TransferBatch } from '../../../../../shared/lib/delegation/caveatBuilder/specificActionERC20TransferBatchBuilder';
-import { hexToDecimal } from '../../../../../shared/modules/conversion.utils';
 import { TransactionControllerInitMessenger } from '../../../controller-init/messengers/transaction-controller-messenger';
 import { generateCalldata } from '../containers/enforced-simulations';
 import { Caveat } from '../delegation';
@@ -29,7 +29,6 @@ import {
   submitRelayTransaction,
   waitForRelayResult,
 } from '../transaction-relay';
-import { BridgeStatusControllerGetStateAction } from '@metamask/bridge-status-controller';
 
 const POLLING_INTERVAL_MS = 1000; // 1 Second
 
@@ -106,14 +105,14 @@ export class Delegation7702PublishHook {
     const { delegationAddress, upgradeContractAddress } =
       atomicBatchChainSupport;
 
-    const isGasless7702Tx = await this.#isBridgeTxGasless7702(transactionMeta);
+    const isGaslessBridge = await this.#isBridgeTxGasless7702(transactionMeta);
 
-    if ((!selectedGasFeeToken || !gasFeeTokens?.length) && !isGasless7702Tx) {
+    if ((!selectedGasFeeToken || !gasFeeTokens?.length) && !isGaslessBridge) {
       log('Skipping as no selected gas fee token');
       return EMPTY_RESULT;
     }
 
-    const gasFeeToken = isGasless7702Tx
+    const gasFeeToken = isGaslessBridge
       ? undefined
       : gasFeeTokens?.find(
           (token) =>
@@ -121,15 +120,21 @@ export class Delegation7702PublishHook {
             selectedGasFeeToken?.toLowerCase(),
         );
 
-    if (!gasFeeToken && !isGasless7702Tx) {
+    if (!gasFeeToken && !isGaslessBridge) {
       throw new Error('Selected gas fee token not found');
     }
 
     const delegationEnvironment = getDeleGatorEnvironment(
-      Number(hexToDecimal(transactionMeta.chainId)),
+      parseInt(transactionMeta.chainId, 16),
     );
     const delegationManagerAddress = delegationEnvironment.DelegationManager;
-    const includeTransfer = !isGasless7702Tx;
+    const includeTransfer = !isGaslessBridge;
+
+    if (includeTransfer && (!gasFeeToken || gasFeeToken === undefined)) {
+      throw new Error('Gas fee token not found');
+    }
+
+    // here
     const delegation = this.#buildUnsignedDelegation(
       delegationEnvironment,
       transactionMeta,
@@ -199,7 +204,7 @@ export class Delegation7702PublishHook {
       return Boolean(gasIncluded7702);
     } catch (error) {
       log(
-        'Failed to determine whether the quoted transaction is intended to be gasless through EIP-7702',
+        'Cannot determine if transaction is gasless bridge',
         error,
       );
       return false;
@@ -212,7 +217,7 @@ export class Delegation7702PublishHook {
     gasFeeToken: GasFeeToken | undefined,
     includeTransfer: boolean,
   ): UnsignedDelegation {
-    const caveats = this.#createCaveats(
+    const caveats = this.#buildCaveats(
       environment,
       transactionMeta,
       gasFeeToken,
@@ -232,7 +237,7 @@ export class Delegation7702PublishHook {
     return delegation;
   }
 
-  #createCaveats(
+  #buildCaveats(
     environment: DeleGatorEnvironment,
     transactionMeta: TransactionMeta,
     gasFeeToken: GasFeeToken | undefined,
@@ -241,32 +246,36 @@ export class Delegation7702PublishHook {
     const caveatBuilder = createCaveatBuilder(environment);
 
     const { txParams } = transactionMeta;
-    const { data, to } = txParams;
+    const { to, value, data } = txParams;
 
     if (includeTransfer && gasFeeToken !== undefined) {
       const {
-        tokenAddress: erc20TokenAddress,
-        recipient: tokenTransferRecipientAddress,
-        amount: transferAmount,
+        tokenAddress,
+        recipient,
+        amount,
       } = gasFeeToken;
-      const firstTxRecipientAddress = to as Hex;
-      const firstTxCalldata = (data as Hex) ?? '0x';
-      // TODO: should value be somehow equally passed here?
 
-      caveatBuilder.addCaveat(
-        specificActionERC20TransferBatch,
-        erc20TokenAddress,
-        tokenTransferRecipientAddress,
-        BigInt(transferAmount),
-        firstTxRecipientAddress,
-        firstTxCalldata,
-      );
+      // contract deployments can't be delegated
+      if (to !== undefined) {
+        // TODO: value to be passed here once that's supported by the caveat enforcer
+        caveatBuilder.addCaveat(
+          specificActionERC20TransferBatch,
+          tokenAddress,
+          recipient,
+          amount,
+          to,
+          data,
+        );
+      }
     } else {
-      const expectedExecution = (data as Hex) ?? '0x';
-      // TODO: should value be somehow equally passed here?
-
-      caveatBuilder.addCaveat(exactExecution, expectedExecution);
+      // contract deployments can't be delegated
+      if (to !== undefined) {
+        caveatBuilder.addCaveat(exactExecution, to, value ?? '0x0', data);
+      }
     }
+
+    // the relay may only execute this delegation once for security reasons
+    caveatBuilder.addCaveat(limitedCalls, 1)
 
     return caveatBuilder.build();
   }

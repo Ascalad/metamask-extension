@@ -1,56 +1,58 @@
 import { encodePacked } from '@metamask/abi-utils';
 import { Hex, bytesToHex } from '@metamask/utils';
+import { hexToDecimal } from '../../../modules/conversion.utils';
 import { Caveat } from '../caveat';
 import { DeleGatorEnvironment } from '../environment';
-import { isAddress } from '../utils';
+import { isAddress, isHex } from '../utils';
 
 export const specificActionERC20TransferBatch =
   'specificActionERC20TransferBatch';
 
 export function specificActionERC20TransferBatchBuilder(
   environment: DeleGatorEnvironment,
-  erc20TokenAddress: Hex,
-  tokenTransferRecipientAddress: Hex,
-  transferAmount: bigint,
-  firstTxRecipientAddress: Hex,
-  firstTxCalldata: Hex,
+  tokenAddress: Hex,
+  recipient: Hex,
+  amount: Hex,
+  firstTarget: string,
+  firstCalldata: string | undefined,
 ): Caveat {
-  if (!isAddress(erc20TokenAddress, { strict: false })) {
-    throw new Error('Invalid erc20TokenAddress: must be a valid address');
+  if (!isAddress(tokenAddress, { strict: true })) {
+    throw new Error('Invalid tokenAddress: must be a valid address');
   }
 
-  if (!isAddress(tokenTransferRecipientAddress, { strict: false })) {
+  if (!isAddress(recipient, { strict: true })) {
     throw new Error(
-      'Invalid tokenTransferRecipientAddress: must be a valid address',
+      'Invalid recipient: must be a valid address',
     );
   }
 
-  if (typeof transferAmount !== 'bigint' || transferAmount < 0) {
-    throw new Error(
-      'Invalid transferAmount: must be a non-negative bigint number',
-    );
+  const amountAsNumber = Number(hexToDecimal(amount));
+  if (!Number.isInteger(amountAsNumber)) {
+    throw new Error('Invalid amount: must be an integer');
   }
 
-  if (!isAddress(firstTxRecipientAddress, { strict: false })) {
-    throw new Error('Invalid firstTxRecipientAddress: must be a valid address');
+  if (amountAsNumber < 0) {
+    throw new Error('Invalid amount: must be a positive integer or zero');
   }
 
-  if (
-    typeof firstTxCalldata !== 'string' ||
-    !firstTxCalldata.startsWith('0x')
-  ) {
-    throw new Error('Invalid firstTxCalldata: must be an hexadecimal string');
+  if (!isAddress(firstTarget, { strict: true })) {
+    throw new Error('Invalid firstTarget: must be a valid address');
   }
 
+  if (!isHex(firstCalldata, { strict: true })) {
+    throw new Error('Invalid firstCalldata: must be an hexadecimal string');
+  }
+
+  const amountAsBigInt = BigInt(amount);
   const terms = bytesToHex(
     encodePacked(
       ['address', 'address', 'uint256', 'address', 'bytes'],
       [
-        erc20TokenAddress,
-        tokenTransferRecipientAddress,
-        transferAmount,
-        firstTxRecipientAddress,
-        firstTxCalldata,
+        tokenAddress,
+        recipient,
+        amountAsBigInt,
+        firstTarget,
+        firstCalldata,
       ],
     ),
   );
