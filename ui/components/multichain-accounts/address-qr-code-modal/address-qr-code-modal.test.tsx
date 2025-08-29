@@ -8,12 +8,14 @@ import * as networkSelectors from '../../../../shared/modules/selectors/networks
 import * as blockExplorerUtils from '../../../helpers/utils/multichain/blockExplorer';
 import * as explorerMenuItem from '../../multichain/menu-items/view-explorer-menu-item';
 
+import { getInternalAccountByAddress } from '../../../selectors/selectors';
+import { AddressQRCodeModal } from './address-qr-code-modal';
+// Get the mocked function
+
 // Mock the getInternalAccountByAddress selector before importing the component
 jest.mock('../../../selectors/selectors', () => ({
   getInternalAccountByAddress: jest.fn(),
 }));
-
-import { AddressQRCodeModal } from './address-qr-code-modal';
 
 // Mock modules
 jest.mock('../../../helpers/utils/util');
@@ -34,12 +36,10 @@ const mockUseCopyToClipboard = jest.mocked(copyHookModule.useCopyToClipboard);
 const mockGetImageForChainId = jest.mocked(
   multichainSelectors.getImageForChainId,
 );
-// Get the mocked function
-import { getInternalAccountByAddress } from '../../../selectors/selectors';
-const mockGetInternalAccountByAddress = jest.mocked(getInternalAccountByAddress);
-const mockGetProviderConfig = jest.mocked(
-  networkSelectors.getProviderConfig,
+const mockGetInternalAccountByAddress = jest.mocked(
+  getInternalAccountByAddress,
 );
+const mockGetProviderConfig = jest.mocked(networkSelectors.getProviderConfig);
 const mockGetMultichainAccountUrl = jest.mocked(
   blockExplorerUtils.getMultichainAccountUrl,
 );
@@ -116,12 +116,12 @@ describe('AddressQRCodeModal', () => {
         'Use this address to receive tokens and collectibles on Ethereum Mainnet',
       ),
     ).toBeInTheDocument();
-    
+
     expect(mockGetInternalAccountByAddress).toHaveBeenCalledWith(
       expect.any(Object),
       '0x1234567890123456789012345678901234567890',
     );
-    expect(mockGetProviderConfig).toHaveBeenCalled();
+    expect(mockGetMultichainNetworkConfigurationsByChainId).toHaveBeenCalled();
   });
 
   it('should not render the modal when isOpen is false', () => {
@@ -213,7 +213,7 @@ describe('AddressQRCodeModal', () => {
       expect.any(Object),
       '0x1234567890123456789012345678901234567890',
     );
-    expect(mockGetProviderConfig).toHaveBeenCalled();
+    expect(mockGetMultichainNetworkConfigurationsByChainId).toHaveBeenCalled();
   });
 
   it('should call onClose when close button is clicked', () => {
@@ -241,7 +241,7 @@ describe('AddressQRCodeModal', () => {
       type: 'custom',
       rpcPrefs: {},
     });
-    
+
     const polygonProps = {
       ...mockProps,
       chainId: '0x89',

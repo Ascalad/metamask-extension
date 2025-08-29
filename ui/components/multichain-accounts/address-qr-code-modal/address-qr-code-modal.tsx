@@ -18,6 +18,7 @@ import {
   FontWeight,
 } from '@metamask/design-system-react';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
+import { toEvmCaipChainId } from '@metamask/multichain-network-controller';
 import {
   Modal,
   ModalOverlay,
@@ -28,14 +29,11 @@ import {
 import type { ModalProps } from '../../component-library';
 import { useI18nContext } from '../../../hooks/useI18nContext';
 import { useCopyToClipboard } from '../../../hooks/useCopyToClipboard';
-import { useMultichainSelector } from '../../../hooks/useMultichainSelector';
 import { getImageForChainId } from '../../../selectors/multichain';
 import { getInternalAccountByAddress } from '../../../selectors/selectors';
-import { getMultichainNetwork } from '../../../selectors/multichain';
-import { getMultichainAccountUrl } from '../../../helpers/utils/multichain/blockExplorer';
+import { getMultichainNetworkConfigurationsByChainId } from '../../../selectors/multichain/networks';
 import { openBlockExplorer } from '../../multichain/menu-items/view-explorer-menu-item';
 import { MetaMetricsContext } from '../../../contexts/metametrics';
-import { getAccountTypeCategory } from '../../../pages/multichain-accounts/account-details';
 
 // Constants for QR code generation
 const QR_CODE_TYPE_NUMBER = 4;
@@ -56,7 +54,6 @@ export type AddressQRCodeModalProps = Omit<
   address: string;
   chainId: string;
   account?: InternalAccount;
-  accountGroupName?: string;
 };
 
 export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
@@ -73,17 +70,48 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   const accountInfo = useSelector((state) =>
     getInternalAccountByAddress(state, address),
   );
-  
-  // Use the multichain network selector with the account context
-  const multichainNetwork = useMultichainSelector(
-    getMultichainNetwork,
-    accountInfo || account,
+
+  // Get network configuration for the specific chainId
+  const [networkConfigurationsByChainId] = useSelector(
+    getMultichainNetworkConfigurationsByChainId,
   );
-  
+
+  // Get the network configuration
+  // chainId might be in hex format (0x1) or CAIP format (eip155:1)
+  let multichainNetwork = null;
+  if (chainId && typeof chainId === 'string') {
+    let caipChainId: string;
+
+    if (chainId.startsWith('eip155:')) {
+      // Already in CAIP format
+      caipChainId = chainId;
+    } else if (chainId.startsWith('0x')) {
+      // Convert from hex to CAIP format
+      try {
+        caipChainId = toEvmCaipChainId(chainId);
+      } catch (error) {
+        console.warn(
+          'Invalid hex chainId for CAIP conversion:',
+          chainId,
+          error,
+        );
+        caipChainId = '';
+      }
+    } else {
+      console.warn('Unknown chainId format:', chainId);
+      caipChainId = '';
+    }
+
+    if (caipChainId) {
+      multichainNetwork = networkConfigurationsByChainId[caipChainId];
+    }
+  }
+
   const networkImageSrc = useSelector(() => getImageForChainId(chainId));
 
-  const accountName = accountInfo?.metadata?.name || account?.metadata?.name || '';
-  const networkName = multichainNetwork?.nickname || '';
+  const accountName =
+    accountInfo?.metadata?.name || account?.metadata?.name || '';
+  const networkName = multichainNetwork?.name || 'Unknown Network';
 
   // Address segmentation for display
   const addressStart = address.substring(0, PREFIX_LEN);
@@ -103,38 +131,39 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   }, [address, handleCopy]);
 
   const getExplorerButtonText = (): string => {
-    const targetAccount = accountInfo || account;
-    if (!targetAccount) {
+    if (!multichainNetwork?.blockExplorerUrls?.length) {
       return t('viewOnExplorer');
     }
 
-    switch (getAccountTypeCategory(targetAccount)) {
-      case 'evm':
-        return t('viewAddressOnExplorer', ['Etherscan']);
-      case 'solana':
-        return t('viewAddressOnExplorer', ['Solscan']);
-      default:
-        return t('viewOnExplorer');
+    const explorerUrl = multichainNetwork.blockExplorerUrls[0];
+    if (explorerUrl.includes('etherscan')) {
+      return t('viewAddressOnExplorer', ['Etherscan']);
     }
+    if (explorerUrl.includes('bscscan')) {
+      return t('viewAddressOnExplorer', ['BSCScan']);
+    }
+    if (explorerUrl.includes('polygonscan')) {
+      return t('viewAddressOnExplorer', ['Polygonscan']);
+    }
+    if (explorerUrl.includes('arbiscan')) {
+      return t('viewAddressOnExplorer', ['Arbiscan']);
+    }
+    if (explorerUrl.includes('solscan')) {
+      return t('viewAddressOnExplorer', ['Solscan']);
+    }
+    return t('viewOnExplorer');
   };
 
   const handleExplorerNavigation = useCallback(() => {
-    if (!account && !accountInfo) {
+    if (!multichainNetwork?.blockExplorerUrls?.length) {
       return;
     }
 
-    const addressLink = getMultichainAccountUrl(address, multichainNetwork);
+    const explorerUrl = multichainNetwork.blockExplorerUrls[0];
+    const addressLink = `${explorerUrl.replace(/\/$/, '')}/address/${address}`;
 
-    if (addressLink) {
-      openBlockExplorer(addressLink, 'Address QR Code Modal', trackEvent);
-    }
-  }, [
-    address,
-    accountInfo,
-    account,
-    multichainNetwork,
-    trackEvent,
-  ]);
+    openBlockExplorer(addressLink, 'Address QR Code Modal', trackEvent);
+  }, [address, multichainNetwork, trackEvent]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>

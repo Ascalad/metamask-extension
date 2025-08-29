@@ -48,7 +48,11 @@ type MultichainAddressRowProps = {
   /**
    * Callback function when QR code button is clicked
    */
-  onQrClick?: (address: string, chainId: string, account: InternalAccount) => void;
+  onQrClick?: (
+    address: string,
+    chainId: string,
+    account: InternalAccount,
+  ) => void;
 };
 
 export const MultichainAddressRow = ({
