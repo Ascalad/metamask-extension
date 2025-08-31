@@ -44,6 +44,8 @@ describe('Power user persona', function () {
         await accountListPage.checkAccountDisplayedInAccountList(
           `Account ${withState.withAccounts}`,
         );
+
+        // await driver.delay(1000000);
       },
     );
   });

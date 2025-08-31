@@ -1,6 +1,7 @@
 import { Messenger } from '@metamask/base-controller';
 import { KeyringController } from '@metamask/keyring-controller';
 import { wordlist } from '@metamask/scure-bip39/dist/wordlists/english';
+import { hexToDecimal } from '../../../shared/modules/conversion.utils';
 import { UI_NOTIFICATIONS } from '../../../shared/notifications';
 import { WALLET_PASSWORD } from '../../../test/e2e/constants';
 import { E2E_SRP, defaultFixture } from '../../../test/e2e/default-fixture';
@@ -10,7 +11,7 @@ import { withAddressBook } from './with-address-book';
 import { FIXTURES_APP_STATE } from './with-app-state';
 import { withConfirmedTransactions } from './with-confirmed-transactions';
 import { FIXTURES_ERC20_TOKENS } from './with-erc20-tokens';
-import { FIXTURES_NETWORKS } from './with-networks';
+import { ALL_POPULAR_NETWORKS, FIXTURES_NETWORKS } from './with-networks';
 import { FIXTURES_PREFERENCES } from './with-preferences';
 import { withUnreadNotifications } from './with-unread-notifications';
 
@@ -47,7 +48,8 @@ export async function generateWalletState(withState, fromTest) {
     )
     .withPreferencesController(generatePreferencesControllerState(accounts))
     .withTokensController(generateTokensControllerState(accounts[0]))
-    .withTransactionController(generateTransactionControllerState(accounts[0]));
+    .withTransactionController(generateTransactionControllerState(accounts[0]))
+    .withEnabledNetworks(ALL_POPULAR_NETWORKS);
 
   return fixtureBuilder;
 }
@@ -291,11 +293,21 @@ function generateTokensControllerState(account) {
 
   const tokens = FIXTURES_ERC20_TOKENS;
   if (FIXTURES_CONFIG.withErc20Tokens) {
-    // Update `myAccount` key for the account address
-    for (const network of Object.values(tokens.allTokens)) {
-      network[account] = network.myAccount;
-      delete network.myAccount;
+    for (const [chainId, data] of Object.entries(tokens.allTokens)) {
+      const chainIdDec = hexToDecimal(chainId);
+
+      // Add automatic token images if missing
+      for (const token of data.myAccount) {
+        if (!token.image) {
+          token.image = `https://static.cx.metamask.io/api/v1/tokenIcons/${chainIdDec}/${token.address}.png`;
+        }
+      }
+
+      // Update `myAccount` key for the account address
+      data[account] = data.myAccount;
+      delete data.myAccount;
     }
+
     return tokens;
   }
   return {};

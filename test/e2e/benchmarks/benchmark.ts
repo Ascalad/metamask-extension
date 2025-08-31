@@ -3,15 +3,27 @@ import get from 'lodash/get';
 import path from 'path';
 import { hideBin } from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import { exitWithError } from '../../development/lib/exit-with-error';
-import { retry } from '../../development/lib/retry';
-import { getFirstParentDirectoryThatExists, isWritable } from '../helpers/file';
-import FixtureBuilder from './fixture-builder';
-import { unlockWallet, withFixtures } from './helpers';
-import { PAGES } from './webdriver/driver';
+import { generateWalletState } from '../../../app/scripts/fixtures/generate-wallet-state';
+import { exitWithError } from '../../../development/lib/exit-with-error';
+import { retry } from '../../../development/lib/retry';
+import {
+  getFirstParentDirectoryThatExists,
+  isWritable,
+} from '../../helpers/file';
+import FixtureBuilder from '../fixture-builder';
+import { unlockWallet, withFixtures } from '../helpers';
+import AccountListPage from '../page-objects/pages/account-list-page';
+import HeaderNavbar from '../page-objects/pages/header-navbar';
+import { PAGES } from '../webdriver/driver';
+import {
+  BenchmarkArguments,
+  BenchmarkResults,
+  Metrics,
+  StatisticalResult,
+} from './types';
 
-const DEFAULT_NUM_BROWSER_LOADS = 10;
-const DEFAULT_NUM_PAGE_LOADS = 10;
+const DEFAULT_NUM_BROWSER_LOADS = 2;
+const DEFAULT_NUM_PAGE_LOADS = 4;
 const ALL_PAGES = Object.values(PAGES);
 
 const ALL_TRACES = {
@@ -26,10 +38,23 @@ const ALL_TRACES = {
   initialActions: 'Initial Actions',
   loadScripts: 'Load Scripts',
   setupStore: 'Setup Store',
+} as const;
+
+const withState = {
+  withAccounts: 21,
+  withConfirmedTransactions: 40,
+  withContacts: 40,
+  withErc20Tokens: true,
+  withNetworks: true,
+  withPreferences: true,
+  withUnreadNotifications: 15,
 };
 
-async function measurePage(pageName, pageLoads) {
-  let metrics = [];
+async function measurePage(
+  pageName: string,
+  pageLoads: number,
+): Promise<Metrics[]> {
+  const metrics: Metrics[] = [];
   await withFixtures(
     {
       fixtures: new FixtureBuilder().build(),
@@ -50,9 +75,50 @@ async function measurePage(pageName, pageLoads) {
   return metrics;
 }
 
-function calculateResult(calc) {
-  return (result) => {
-    const calculatedResult = {};
+async function measurePage2(
+  pageName: string,
+  pageLoads: number,
+): Promise<Metrics[]> {
+  const metrics: Metrics[] = [];
+  await withFixtures(
+    {
+      title: 'measurePage2',
+      fixtures: (await generateWalletState(withState, true)).build(),
+      manifestFlags: {
+        testing: { disableSync: true },
+      },
+    },
+    async ({ driver }) => {
+      await unlockWallet(driver);
+
+      for (let i = 0; i < pageLoads; i++) {
+        await driver.navigate(pageName);
+        // await loginWithBalanceValidation(driver);
+
+        // Confirm the number of accounts in the account list
+        new HeaderNavbar(driver).openAccountMenu();
+        const accountListPage = new AccountListPage(driver);
+        await accountListPage.checkNumberOfAvailableAccounts(
+          withState.withAccounts,
+        );
+
+        // Confirm that the last account is displayed in the account list
+        await accountListPage.checkAccountDisplayedInAccountList(
+          `Account ${withState.withAccounts}`,
+        );
+
+        await driver.delay(1000);
+
+        metrics.push(await driver.collectMetrics());
+      }
+    },
+  );
+  return metrics;
+}
+
+function calculateResult(calc: (array: number[]) => number) {
+  return (result: Record<string, number[]>): StatisticalResult => {
+    const calculatedResult: StatisticalResult = {};
     for (const key of Object.keys(result)) {
       calculatedResult[key] = calc(result[key]);
     }
@@ -60,12 +126,14 @@ function calculateResult(calc) {
   };
 }
 
-const calculateSum = (array) => array.reduce((sum, val) => sum + val);
-const calculateMean = (array) => calculateSum(array) / array.length;
-const minResult = calculateResult((array) => Math.min(...array));
-const maxResult = calculateResult((array) => Math.max(...array));
-const meanResult = calculateResult((array) => calculateMean(array));
-const standardDeviationResult = calculateResult((array) => {
+const calculateSum = (array: number[]): number =>
+  array.reduce((sum, val) => sum + val);
+const calculateMean = (array: number[]): number =>
+  calculateSum(array) / array.length;
+const minResult = calculateResult((array: number[]) => Math.min(...array));
+const maxResult = calculateResult((array: number[]) => Math.max(...array));
+const meanResult = calculateResult((array: number[]) => calculateMean(array));
+const standardDeviationResult = calculateResult((array: number[]) => {
   if (array.length === 1) {
     return 0;
   }
@@ -75,22 +143,30 @@ const standardDeviationResult = calculateResult((array) => {
 });
 
 // Calculate the pth percentile of an array
-function pResult(array, p) {
-  return calculateResult((array) => {
-    const index = Math.floor((p / 100.0) * array.length);
-    return array[index];
+function pResult(
+  array: Record<string, number[]>,
+  p: number,
+): StatisticalResult {
+  return calculateResult((arr: number[]) => {
+    const index = Math.floor((p / 100.0) * arr.length);
+    return arr[index];
   })(array);
 }
 
-async function profilePageLoad(pages, browserLoads, pageLoads, retries) {
-  const results = {};
+async function profilePageLoad(
+  pages: string[],
+  browserLoads: number,
+  pageLoads: number,
+  retries: number,
+): Promise<Record<string, BenchmarkResults>> {
+  const results: Record<string, BenchmarkResults> = {};
   for (const pageName of pages) {
-    let runResults = [];
+    let runResults: Metrics[] = [];
+
     for (let i = 0; i < browserLoads; i += 1) {
-      let result;
-      await retry({ retries }, async () => {
-        result = await measurePage(pageName, pageLoads);
-      });
+      const result = await retry({ retries }, () =>
+        measurePage2(pageName, pageLoads),
+      );
       runResults = runResults.concat(result);
     }
 
@@ -102,19 +178,19 @@ async function profilePageLoad(pages, browserLoads, pageLoads, retries) {
       throw new Error(
         `Navigation type ${
           runResults.find((result) => result.navigation[0].type !== 'navigate')
-            .navigation[0].type
+            ?.navigation[0].type
         } not supported`,
       );
     }
 
     console.info(JSON.stringify(runResults, null, 2));
 
-    const result = {};
+    const result: Record<string, number[]> = {};
 
-    for (const [key, path] of Object.entries(ALL_TRACES)) {
+    for (const [key, tracePath] of Object.entries(ALL_TRACES)) {
       // Using lodash get to support nested properties like 'navigation[0].load'
       result[key] = runResults
-        .map((metrics) => get(metrics, path))
+        .map((metrics) => get(metrics, tracePath) as number)
         .sort((a, b) => a - b); // Sort the array as numbers, not strings
     }
 
@@ -130,7 +206,7 @@ async function profilePageLoad(pages, browserLoads, pageLoads, retries) {
   return results;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const { argv } = yargs(hideBin(process.argv)).usage(
     '$0 [options]',
     'Run a page load benchmark',
@@ -167,21 +243,9 @@ async function main() {
             'Set how many times each benchmark sample should be retried upon failure.',
           type: 'number',
         }),
-  );
+  ) as unknown as { argv: BenchmarkArguments };
 
   const { pages, browserLoads, pageLoads, out, retries } = argv;
-
-  let outputDirectory;
-  let existingParentDirectory;
-  if (out) {
-    outputDirectory = path.dirname(out);
-    existingParentDirectory = await getFirstParentDirectoryThatExists(
-      outputDirectory,
-    );
-    if (!(await isWritable(existingParentDirectory))) {
-      throw new Error('Specified output file directory is not writable');
-    }
-  }
 
   const results = await profilePageLoad(
     pages,
@@ -191,6 +255,13 @@ async function main() {
   );
 
   if (out) {
+    const outputDirectory = path.dirname(out);
+    const existingParentDirectory =
+      await getFirstParentDirectoryThatExists(outputDirectory);
+    if (!(await isWritable(existingParentDirectory))) {
+      throw new Error('Specified output file directory is not writable');
+    }
+
     if (outputDirectory !== existingParentDirectory) {
       await fs.mkdir(outputDirectory, { recursive: true });
     }

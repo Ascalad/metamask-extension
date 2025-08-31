@@ -1,3 +1,5 @@
+import { CHAIN_IDS } from '../../../shared/constants/network';
+
 export const FIXTURES_NETWORKS = {
   providerConfig: {
     chainId: '0xaa36a7',
@@ -16,50 +18,50 @@ export const FIXTURES_NETWORKS = {
       ticker: 'SepoliaETH',
       networkConfigurationId: 'networkConfigurationId',
     },
-    optimism: {
-      chainId: '0xa',
-      id: 'optimism',
-      nickname: 'OP Mainnet',
-      rpcPrefs: {
-        blockExplorerUrl: 'https://optimistic.etherscan.io/',
-        imageUrl: './images/optimism.svg',
-      },
-      rpcUrl: 'https://optimism-mainnet.infura.io/v3/',
-      ticker: 'ETH',
-    },
-    base: {
-      chainId: '0x2105',
-      id: 'base',
-      nickname: 'Base Mainnet',
-      rpcPrefs: {
-        blockExplorerUrl: 'https://basescan.org',
-        imageUrl: './images/base.svg',
-      },
-      rpcUrl: 'https://mainnet.base.org',
-      ticker: 'ETH',
-    },
-    polygon: {
-      chainId: '0x89',
-      id: 'polygon',
-      nickname: 'Polygon Mainnet',
-      rpcPrefs: {
-        blockExplorerUrl: 'https://polygonscan.com/',
-        imageUrl: './images/matic-token.svg',
-      },
-      rpcUrl: 'https://polygon-mainnet.infura.io/v3/',
-      ticker: 'MATIC',
-    },
-    binance: {
-      chainId: '0x38',
-      id: 'binance',
-      nickname: 'BNB Chain',
-      rpcPrefs: {
-        blockExplorerUrl: 'https://bscscan.com/',
-        imageUrl: './images/bnb.svg',
-      },
-      rpcUrl: 'https://bsc-dataseed.binance.org/',
-      ticker: 'BNB',
-    },
+    // optimism: {
+    //   chainId: '0xa',
+    //   id: 'optimism',
+    //   nickname: 'OP Mainnet',
+    //   rpcPrefs: {
+    //     blockExplorerUrl: 'https://optimistic.etherscan.io/',
+    //     imageUrl: './images/optimism.svg',
+    //   },
+    //   rpcUrl: 'https://optimism-mainnet.infura.io/v3/',
+    //   ticker: 'ETH',
+    // },
+    // base: {
+    //   chainId: '0x2105',
+    //   id: 'base',
+    //   nickname: 'Base Mainnet',
+    //   rpcPrefs: {
+    //     blockExplorerUrl: 'https://basescan.org',
+    //     imageUrl: './images/base.svg',
+    //   },
+    //   rpcUrl: 'https://mainnet.base.org',
+    //   ticker: 'ETH',
+    // },
+    // polygon: {
+    //   chainId: '0x89',
+    //   id: 'polygon',
+    //   nickname: 'Polygon Mainnet',
+    //   rpcPrefs: {
+    //     blockExplorerUrl: 'https://polygonscan.com/',
+    //     imageUrl: './images/matic-token.svg',
+    //   },
+    //   rpcUrl: 'https://polygon-mainnet.infura.io/v3/',
+    //   ticker: 'MATIC',
+    // },
+    // binance: {
+    //   chainId: '0x38',
+    //   id: 'binance',
+    //   nickname: 'BNB Chain',
+    //   rpcPrefs: {
+    //     blockExplorerUrl: 'https://bscscan.com/',
+    //     imageUrl: './images/bnb.svg',
+    //   },
+    //   rpcUrl: 'https://bsc-dataseed.binance.org/',
+    //   ticker: 'BNB',
+    // },
     gnosis: {
       id: 'gnosis',
       rpcUrl: 'https://rpc.gnosischain.com',
@@ -82,17 +84,17 @@ export const FIXTURES_NETWORKS = {
         imageUrl: './images/arbitrum.svg',
       },
     },
-    avalanche: {
-      id: 'avalanche',
-      rpcUrl: 'https://avalanche-mainnet.infura.io/v3/',
-      chainId: '0xa86a',
-      ticker: 'AVAX',
-      nickname: 'Avalanche Network C-Chain',
-      rpcPrefs: {
-        blockExplorerUrl: 'https://snowtrace.io/',
-        imageUrl: './images/avax-token.svg',
-      },
-    },
+    // avalanche: {
+    //   id: 'avalanche',
+    //   rpcUrl: 'https://avalanche-mainnet.infura.io/v3/',
+    //   chainId: '0xa86a',
+    //   ticker: 'AVAX',
+    //   nickname: 'Avalanche Network C-Chain',
+    //   rpcPrefs: {
+    //     blockExplorerUrl: 'https://snowtrace.io/',
+    //     imageUrl: './images/avax-token.svg',
+    //   },
+    // },
     celo: {
       id: 'celo',
       rpcUrl: 'https://celo-mainnet.infura.io/v3/',
@@ -104,17 +106,17 @@ export const FIXTURES_NETWORKS = {
         imageUrl: './images/celo.svg',
       },
     },
-    zkSync: {
-      id: 'zkSync',
-      rpcUrl: 'https://mainnet.era.zksync.io',
-      chainId: '0x144',
-      ticker: 'ETH',
-      nickname: 'zkSync Era Mainnet',
-      rpcPrefs: {
-        blockExplorerUrl: 'https://explorer.zksync.io/',
-        imageUrl: './images/zk-sync.svg',
-      },
-    },
+    // zkSync: {
+    //   id: 'zkSync',
+    //   rpcUrl: 'https://mainnet.era.zksync.io',
+    //   chainId: '0x144',
+    //   ticker: 'ETH',
+    //   nickname: 'zkSync Era Mainnet',
+    //   rpcPrefs: {
+    //     blockExplorerUrl: 'https://explorer.zksync.io/',
+    //     imageUrl: './images/zk-sync.svg',
+    //   },
+    // },
     localhost: {
       id: 'localhost',
       rpcUrl: 'http://localhost:8545',
@@ -126,5 +128,19 @@ export const FIXTURES_NETWORKS = {
         imageUrl: '',
       },
     },
+  },
+};
+
+export const ALL_POPULAR_NETWORKS = {
+  eip155: {
+    [CHAIN_IDS.MAINNET]: true,
+    [CHAIN_IDS.LINEA_MAINNET]: true,
+    [CHAIN_IDS.OPTIMISM]: true,
+    [CHAIN_IDS.BASE]: true,
+    [CHAIN_IDS.POLYGON]: true,
+    [CHAIN_IDS.BSC]: true,
+    [CHAIN_IDS.ARBITRUM]: true,
+    [CHAIN_IDS.AVALANCHE]: true,
+    [CHAIN_IDS.ZKSYNC_ERA]: true,
   },
 };

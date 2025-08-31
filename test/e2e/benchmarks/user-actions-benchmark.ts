@@ -3,22 +3,25 @@ import path from 'path';
 import { Mockttp } from 'mockttp';
 import { hideBin } from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import { exitWithError } from '../../development/lib/exit-with-error';
-import { getFirstParentDirectoryThatExists, isWritable } from '../helpers/file';
-import { Driver } from './webdriver/driver';
-import FixtureBuilder from './fixture-builder';
-import HomePage from './page-objects/pages/home/homepage';
-import BridgeQuotePage from './page-objects/pages/bridge/quote-page';
+import { exitWithError } from '../../../development/lib/exit-with-error';
+import {
+  getFirstParentDirectoryThatExists,
+  isWritable,
+} from '../../helpers/file';
+import { Driver } from '../webdriver/driver';
+import FixtureBuilder from '../fixture-builder';
+import HomePage from '../page-objects/pages/home/homepage';
+import BridgeQuotePage from '../page-objects/pages/bridge/quote-page';
 import {
   DEFAULT_BRIDGE_FEATURE_FLAGS,
   MOCK_TOKENS_ETHEREUM,
-} from './tests/bridge/constants';
+} from '../tests/bridge/constants';
 import {
   logInWithBalanceValidation,
   openActionMenuAndStartSendFlow,
   unlockWallet,
   withFixtures,
-} from './helpers';
+} from '../helpers';
 
 async function mockTokensEthereum(mockServer: Mockttp) {
   return await mockServer
