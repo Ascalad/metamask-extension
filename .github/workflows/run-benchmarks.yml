@@ -5,6 +5,7 @@ env:
   COMMANDS: |
     {
       pageload: 'yarn tsx test/e2e/benchmarks/benchmark.ts --out test-artifacts/benchmarks/benchmark-{0}-{1}-pageload.json --retries 2',
+      powerUser: 'yarn tsx test/e2e/benchmarks/benchmark.ts --isPowerUser --out test-artifacts/benchmarks/benchmark-{0}-{1}-powerUser.json --retries 2',
       userActions: 'yarn tsx test/e2e/benchmarks/user-actions-benchmark.ts --out test-artifacts/benchmarks/benchmark-{0}-{1}-userActions.json --retries 2',
     }
 
@@ -16,7 +17,7 @@ jobs:
       matrix:
         browser: [chrome, firefox]
         buildType: [browserify, webpack]
-        testType: [pageload, userActions]
+        testType: [pageload, powerUser, userActions]
     name: ${{ matrix.browser }}-${{ matrix.buildType }}-${{ matrix.testType }}
     env:
       SELENIUM_BROWSER: ${{ matrix.browser }}

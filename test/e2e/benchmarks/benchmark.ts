@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
-import get from 'lodash/get';
 import path from 'path';
+import get from 'lodash/get';
 import { hideBin } from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 import { generateWalletState } from '../../../app/scripts/fixtures/generate-wallet-state';
@@ -22,8 +22,8 @@ import {
   StatisticalResult,
 } from './types';
 
-const DEFAULT_NUM_BROWSER_LOADS = 2;
-const DEFAULT_NUM_PAGE_LOADS = 4;
+const DEFAULT_NUM_BROWSER_LOADS = 10;
+const DEFAULT_NUM_PAGE_LOADS = 10;
 const ALL_PAGES = Object.values(PAGES);
 
 const ALL_TRACES = {
@@ -41,7 +41,7 @@ const ALL_TRACES = {
 } as const;
 
 const withState = {
-  withAccounts: 21,
+  withAccounts: 30,
   withConfirmedTransactions: 40,
   withContacts: 40,
   withErc20Tokens: true,
@@ -75,19 +75,25 @@ async function measurePage(
   return metrics;
 }
 
-async function measurePage2(
+async function measurePagePowerUser(
   pageName: string,
   pageLoads: number,
 ): Promise<Metrics[]> {
   const metrics: Metrics[] = [];
   await withFixtures(
     {
-      title: 'measurePage2',
+      title: 'measurePagePowerUser',
       fixtures: (await generateWalletState(withState, true)).build(),
       manifestFlags: {
-        testing: { disableSync: true },
+        testing: {
+          disableSync: true,
+          infuraProjectId: process.env.INFURA_PROJECT_ID,
+        },
       },
+      useMockingPassThrough: true,
+      disableServerMochaToBackground: true,
     },
+
     async ({ driver }) => {
       await unlockWallet(driver);
 
@@ -158,6 +164,7 @@ async function profilePageLoad(
   browserLoads: number,
   pageLoads: number,
   retries: number,
+  isPowerUser: boolean,
 ): Promise<Record<string, BenchmarkResults>> {
   const results: Record<string, BenchmarkResults> = {};
   for (const pageName of pages) {
@@ -165,7 +172,9 @@ async function profilePageLoad(
 
     for (let i = 0; i < browserLoads; i += 1) {
       const result = await retry({ retries }, () =>
-        measurePage2(pageName, pageLoads),
+        isPowerUser
+          ? measurePagePowerUser(pageName, pageLoads)
+          : measurePage(pageName, pageLoads),
       );
       runResults = runResults.concat(result);
     }
@@ -242,16 +251,23 @@ async function main(): Promise<void> {
           description:
             'Set how many times each benchmark sample should be retried upon failure.',
           type: 'number',
+        })
+        .option('isPowerUser', {
+          default: false,
+          description:
+            'Whether to run the benchmark as a power user with additional accounts, tokens, and transactions.',
+          type: 'boolean',
         }),
   ) as unknown as { argv: BenchmarkArguments };
 
-  const { pages, browserLoads, pageLoads, out, retries } = argv;
+  const { pages, browserLoads, pageLoads, out, retries, isPowerUser } = argv;
 
   const results = await profilePageLoad(
     pages,
     browserLoads,
     pageLoads,
     retries,
+    isPowerUser,
   );
 
   if (out) {

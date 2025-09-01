@@ -1,6 +1,7 @@
 import { Messenger } from '@metamask/base-controller';
 import { KeyringController } from '@metamask/keyring-controller';
 import { wordlist } from '@metamask/scure-bip39/dist/wordlists/english';
+import { cloneDeep } from 'lodash';
 import { hexToDecimal } from '../../../shared/modules/conversion.utils';
 import { UI_NOTIFICATIONS } from '../../../shared/notifications';
 import { WALLET_PASSWORD } from '../../../test/e2e/constants';
@@ -293,7 +294,10 @@ function generateTokensControllerState(account) {
 
   const tokens = FIXTURES_ERC20_TOKENS;
   if (FIXTURES_CONFIG.withErc20Tokens) {
-    for (const [chainId, data] of Object.entries(tokens.allTokens)) {
+    // Must cloneDeep to avoid a crash with the benchmarks and browserLoads > 1
+    const allTokens = cloneDeep(tokens.allTokens);
+
+    for (const [chainId, data] of Object.entries(allTokens)) {
       const chainIdDec = hexToDecimal(chainId);
 
       // Add automatic token images if missing
