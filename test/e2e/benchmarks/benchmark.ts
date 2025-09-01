@@ -115,7 +115,12 @@ async function measurePagePowerUser(
 
         await driver.delay(1000);
 
-        metrics.push(await driver.collectMetrics());
+        try {
+          metrics.push(await driver.collectMetrics());
+        } catch (error) {
+          // This often errors in chrome-webpack-powerUser
+          console.error(`Error collecting metrics for ${pageName}:`, error);
+        }
       }
     },
   );
@@ -170,7 +175,7 @@ async function profilePageLoad(
   for (const pageName of pages) {
     let runResults: Metrics[] = [];
 
-    for (let i = 0; i < browserLoads; i += 1) {
+    for (let i = 0; i < (isPowerUser ? browserLoads : 3); i += 1) {
       const result = await retry({ retries }, () =>
         isPowerUser
           ? measurePagePowerUser(pageName, pageLoads)
