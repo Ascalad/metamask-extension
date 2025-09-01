@@ -1,5 +1,8 @@
 on:
   workflow_call:
+    secrets:
+      INFURA_PROJECT_ID:
+        required: true
 
 env:
   COMMANDS: |
@@ -24,6 +27,7 @@ jobs:
       HEADLESS: true
       ARTIFACT_NAME: build-test-${{ matrix.buildType }}
       OUTPUT_NAME: benchmark-${{ matrix.browser }}-${{ matrix.buildType }}-${{ matrix.testType }}.json
+      INFURA_PROJECT_ID: ${{ secrets.INFURA_PROJECT_ID }}
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@v1
