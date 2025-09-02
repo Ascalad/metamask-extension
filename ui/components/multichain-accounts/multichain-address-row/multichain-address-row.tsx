@@ -1,5 +1,6 @@
 import React from 'react';
-import { InternalAccount } from '@metamask/keyring-internal-api';
+import { CaipChainId } from '@metamask/utils';
+
 import {
   AlignItems,
   BlockSize,
@@ -23,6 +24,7 @@ import {
 import { shortenAddress } from '../../../helpers/utils/util';
 import { useCopyToClipboard } from '../../../hooks/useCopyToClipboard';
 import { getImageForChainId } from '../../../selectors/multichain';
+import { convertCaipToHexChainId } from '../../../../shared/modules/network.utils';
 
 type MultichainAddressRowProps = {
   /**
@@ -65,7 +67,13 @@ export const MultichainAddressRow = ({
 }: MultichainAddressRowProps) => {
   const [copied, handleCopy] = useCopyToClipboard();
 
-  const networkImageSrc = getImageForChainId(chainId);
+  // We're mixing hex with caip chain ids so its necessary
+  // to use the hex format for EVMs and caip for non EVMs.
+  const networkImageSrc = getImageForChainId(
+    chainId.startsWith('eip155')
+      ? convertCaipToHexChainId(chainId as CaipChainId)
+      : chainId,
+  );
   const truncatedAddress = shortenAddress(address);
 
   const handleCopyClick = () => {
