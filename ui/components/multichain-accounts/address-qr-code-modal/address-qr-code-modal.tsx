@@ -101,7 +101,8 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
       lookupChainId = chainId;
     }
 
-    multichainNetwork = networkConfigurationsByChainId[lookupChainId as CaipChainId];
+    multichainNetwork =
+      networkConfigurationsByChainId[lookupChainId as CaipChainId];
   }
 
   // We're mixing hex with caip chain ids so its necessary
@@ -136,10 +137,11 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   }, [address, handleCopy]);
 
   const getExplorerButtonText = (): string => {
-    const blockExplorerUrls = multichainNetwork && 'blockExplorerUrls' in multichainNetwork 
-      ? multichainNetwork.blockExplorerUrls 
-      : [];
-      
+    const blockExplorerUrls =
+      multichainNetwork && 'blockExplorerUrls' in multichainNetwork
+        ? multichainNetwork.blockExplorerUrls
+        : [];
+
     if (!blockExplorerUrls?.length) {
       return t('viewOnExplorer');
     }
@@ -164,10 +166,11 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   };
 
   const handleExplorerNavigation = useCallback(() => {
-    const blockExplorerUrls = multichainNetwork && 'blockExplorerUrls' in multichainNetwork 
-      ? multichainNetwork.blockExplorerUrls 
-      : [];
-      
+    const blockExplorerUrls =
+      multichainNetwork && 'blockExplorerUrls' in multichainNetwork
+        ? multichainNetwork.blockExplorerUrls
+        : [];
+
     if (!blockExplorerUrls?.length) {
       return;
     }
@@ -221,7 +224,11 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
                 justifyContent={BoxJustifyContent.Center}
                 alignItems={BoxAlignItems.Center}
               >
-                <AvatarNetwork name={networkName} src={networkImageSrc} />
+                <AvatarNetwork
+                  name={networkName}
+                  src={networkImageSrc}
+                  className="bg-white" // stay white regardless of theme
+                />
               </Box>
             </Box>
 
