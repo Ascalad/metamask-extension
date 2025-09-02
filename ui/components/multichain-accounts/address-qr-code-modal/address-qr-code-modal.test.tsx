@@ -56,7 +56,9 @@ describe('AddressQRCodeModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseCopyToClipboard.mockReturnValue([false, jest.fn(), jest.fn()]);
-    mockOpenBlockExplorer.mockImplementation(() => {});
+    mockOpenBlockExplorer.mockImplementation(() => {
+      // Mock implementation - no operation needed
+    });
   });
 
   it('should render the modal when isOpen is true', () => {
@@ -246,7 +248,9 @@ describe('AddressQRCodeModal', () => {
       expect(
         screen.getByText('Test Account / Custom Mainnet RPC'),
       ).toBeInTheDocument();
-      expect(screen.getByText('Custom Mainnet RPC Address')).toBeInTheDocument();
+      expect(
+        screen.getByText('Custom Mainnet RPC Address'),
+      ).toBeInTheDocument();
     });
 
     it('should handle unknown non-EVM chain gracefully', () => {

@@ -20,6 +20,10 @@ const meta: Meta<typeof AddressQRCodeModal> = {
       </Provider>
     ),
   ],
+  args: {
+    address: '0x1234567890abcdef1234567890abcdef12345678',
+    chainId: '0x1',
+  },
 };
 
 export default meta;

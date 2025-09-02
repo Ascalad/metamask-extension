@@ -176,7 +176,7 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
     }
 
     const explorerUrl = blockExplorerUrls[0];
-    const addressLink = `${explorerUrl.replace(/\/$/, '')}/address/${address}`;
+    const addressLink = `${explorerUrl.replace(/\/$/u, '')}/address/${address}`;
 
     openBlockExplorer(addressLink, 'Address QR Code Modal', trackEvent);
   }, [address, multichainNetwork, trackEvent]);
