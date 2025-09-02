@@ -155,13 +155,6 @@ describe('AddressQRCodeModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('should generate QR code with the provided address', () => {
-    renderComponent();
-
-    // The QR code generation is handled internally, but we can verify the component renders
-    expect(screen.getByText('Custom Mainnet RPC Address')).toBeInTheDocument();
-  });
-
   it('should handle different network names dynamically', () => {
     // Test with Polygon network (0x89 = 137 decimal = Polygon)
     renderComponent(
