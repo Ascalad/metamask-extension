@@ -1,5 +1,6 @@
 import React from 'react';
 import { CaipChainId } from '@metamask/utils';
+import { InternalAccount } from '@metamask/keyring-internal-api';
 
 import {
   AlignItems,

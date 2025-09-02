@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { type AccountGroupId } from '@metamask/account-api';
+import { type InternalAccount } from '@metamask/keyring-internal-api';
 import { useI18nContext } from '../../../hooks/useI18nContext';
 import {
   BackgroundColor,
@@ -29,7 +30,7 @@ export type MultichainAddressRowsListProps = {
   /**
    * Callback function when QR code button is clicked
    */
-  onQrClick?: (address: string, chainId: string) => void;
+  onQrClick?: (address: string, chainId: string, account: InternalAccount) => void;
 };
 
 export const MultichainAddressRowsList = ({

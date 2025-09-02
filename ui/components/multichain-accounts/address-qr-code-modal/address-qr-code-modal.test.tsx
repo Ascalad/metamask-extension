@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { InternalAccount } from '@metamask/keyring-internal-api';
 import { renderWithProvider } from '../../../../test/lib/render-helpers';
 import mockState from '../../../../test/data/mock-state.json';
 import configureStore from '../../../store/store';
@@ -36,7 +37,7 @@ describe('AddressQRCodeModal', () => {
     onClose: jest.fn(),
     address: mockAccount.address,
     chainId: '0x1',
-    account: mockAccount,
+    account: mockAccount as InternalAccount,
   };
 
   const renderComponent = (props = {}, stateOverrides = {}) => {
