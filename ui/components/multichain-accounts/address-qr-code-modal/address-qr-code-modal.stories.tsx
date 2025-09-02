@@ -3,14 +3,11 @@ import { Meta, StoryObj } from '@storybook/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import { AddressQRCodeModal } from './address-qr-code-modal';
-import type { AddressQRCodeModalProps } from './address-qr-code-modal';
 import { Button } from '@metamask/design-system-react';
 import mockState from '../../../../test/data/mock-state.json';
 
 const mockStore = configureStore([]);
 
-// Use the existing accounts from mock-state.json
-const mockAccounts = mockState.metamask.internalAccounts.accounts;
 const createMockState = () => mockState;
 
 const meta: Meta<typeof AddressQRCodeModal> = {
