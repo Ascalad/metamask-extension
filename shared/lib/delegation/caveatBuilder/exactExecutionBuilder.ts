@@ -13,7 +13,7 @@ export function exactExecutionBuilder(
   value: string,
   data: string | undefined,
 ): Caveat {
-  if (!isAddress(to, { strict: true })) {
+  if (!isAddress(to, { strict: false })) {
     throw new Error('Invalid to: must be a valid address');
   }
 
@@ -26,14 +26,15 @@ export function exactExecutionBuilder(
     throw new Error('Invalid value: must be a positive integer or zero');
   }
 
-  if (!isHex(data, { strict: true })) {
+  const safeData = data !== undefined && data !== '0x' ? data : '0x0';
+  if (!isHex(safeData, { strict: true })) {
     throw new Error('Invalid data: must be a valid hex string');
   }
 
   const valueAsBigInt = BigInt(value);
   const terms = bytesToHex(
     encodePacked(['address', 'uint256', 'bytes'],
-      [to, valueAsBigInt, data],
+      [to, valueAsBigInt, safeData],
     ),
   );
 

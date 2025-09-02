@@ -42,6 +42,7 @@ import { ControllerFlatState } from '../../controller-init/controller-list';
 import { TransactionControllerInitMessenger } from '../../controller-init/messengers/transaction-controller-messenger';
 import { Delegation7702PublishHook } from '../transaction/hooks/delegation-7702-publish';
 import { getTransactionById } from '../transaction/util';
+import { result } from 'lodash';
 
 const namespace = 'SmartTransactions';
 
@@ -569,7 +570,7 @@ function getSmartTransactionCommonParams(
   };
 }
 
-export async function publishSmartTransactionHook({
+export async function publishHook({
   flatState,
   initMessenger,
   signedTx,
@@ -588,7 +589,21 @@ export async function publishSmartTransactionHook({
     getSmartTransactionCommonParams(flatState, transactionMeta.chainId);
   const sendBundleSupport = await isSendBundleSupported(transactionMeta.chainId);
 
-  if (isSmartTransaction && sendBundleSupport) {
+  if (!isSmartTransaction || !sendBundleSupport) {
+    const hook = new Delegation7702PublishHook({
+      isAtomicBatchSupported: transactionController.isAtomicBatchSupported.bind(
+        transactionController,
+      ),
+      messenger: initMessenger,
+    }).getHook();
+
+    return await hook(transactionMeta, signedTx);
+  }
+
+  if (
+    isSmartTransaction &&
+    (sendBundleSupport || transactionMeta.selectedGasFeeToken !== undefined)
+  ) {
     const result = await submitSmartTransactionHook({
       transactionMeta,
       signedTransactionInHex: signedTx as Hex,
@@ -606,17 +621,11 @@ export async function publishSmartTransactionHook({
     }
   }
 
-  const hook = new Delegation7702PublishHook({
-    isAtomicBatchSupported: transactionController.isAtomicBatchSupported.bind(
-      transactionController,
-    ),
-    messenger: initMessenger,
-  }).getHook();
-
-  return await hook(transactionMeta, signedTx);
+  // Default: fall back to regular transaction submission
+  return { transactionHash: undefined };
 }
 
-export function publishBatchSmartTransactionHook({
+export function publishBatchHook({
   transactionController,
   smartTransactionsController,
   hookControllerMessenger,

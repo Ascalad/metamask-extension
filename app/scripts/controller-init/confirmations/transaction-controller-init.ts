@@ -12,8 +12,8 @@ import { trace } from '../../../../shared/lib/trace';
 import { getIsSmartTransaction } from '../../../../shared/modules/selectors';
 import {
   SmartTransactionHookMessenger,
-  publishBatchSmartTransactionHook,
-  publishSmartTransactionHook,
+  publishBatchHook,
+  publishHook,
 } from '../../lib/smart-transaction/smart-transactions';
 
 import { TransactionMetricsRequest } from '../../../../shared/types/metametrics';
@@ -133,7 +133,7 @@ export const TransactionControllerInit: ControllerInitFunction<
       },
       // @ts-expect-error Controller type does not support undefined return value
       publish: (transactionMeta, signedTx) =>
-        publishSmartTransactionHook({
+        publishHook({
           flatState: getFlatState(),
           initMessenger,
           signedTx,
@@ -142,7 +142,7 @@ export const TransactionControllerInit: ControllerInitFunction<
           transactionMeta,
         }),
       publishBatch: async (_request: PublishBatchHookRequest) =>
-        await publishBatchSmartTransactionHook({
+        await publishBatchHook({
           transactionController: controller,
           smartTransactionsController: smartTransactionsController(),
           hookControllerMessenger:

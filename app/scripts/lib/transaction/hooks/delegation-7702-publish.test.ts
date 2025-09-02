@@ -22,14 +22,10 @@ import { Delegation7702PublishHook } from './delegation-7702-publish';
 
 jest.mock('../transaction-relay');
 jest.mock('../delegation', () => {
-  const encodeRedeemDelegationsMock = jest.fn(() => '0xdeadbeef');
-  const signDelegationMock = jest.fn(async () => '0xsignature');
   return {
-    ANY_BENEFICIARY: '0x0000000000000000000000000000000000000000',
-    ROOT_AUTHORITY: '0x0000000000000000000000000000000000000000',
-    ExecutionMode: { BATCH_DEFAULT_MODE: 1 },
-    encodeRedeemDelegations: encodeRedeemDelegationsMock,
-    signDelegation: signDelegationMock,
+    ...jest.requireActual('../delegation'),
+    encodeRedeemDelegations: jest.fn(() => '0xdeadbeef'),
+    signDelegation: jest.fn(async () => '0xsignature'),
   };
 });
 
@@ -347,7 +343,7 @@ describe('Delegation 7702 Publish Hook', () => {
     } as unknown as TransactionMeta;
 
     bridgeGetStateMock.mockResolvedValue({
-      submissions: {
+      submissionRequests: {
         [gaslessTxMeta.chainId]: {
           [GASLESS_TX_ID]: {
             quoteResponse: { quote: { gasIncluded7702: true } },
@@ -359,11 +355,45 @@ describe('Delegation 7702 Publish Hook', () => {
     await hookClass.getHook()(gaslessTxMeta, SIGNED_TX_MOCK);
 
     expect(submitRelayTransactionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('signs delegation for gasless 7702 swap without gas fee tokens', async () => {
+    isAtomicBatchSupportedMock.mockResolvedValueOnce([
+      {
+        chainId: TRANSACTION_META_MOCK.chainId,
+        delegationAddress: UPGRADE_CONTRACT_ADDRESS_MOCK,
+        isSupported: true,
+        upgradeContractAddress: UPGRADE_CONTRACT_ADDRESS_MOCK,
+      },
+    ]);
+
+    // Provide an id and make bridge status return gasIncluded7702: true
+    const GASLESS_TX_ID = 'tx-123';
+    const gaslessTxMeta = {
+      ...TRANSACTION_META_MOCK,
+      id: GASLESS_TX_ID,
+      type: TransactionType.batch,
+      nestedTransactions: [{ type: TransactionType.swap }],
+      // No gasFeeTokens and no selectedGasFeeToken
+    } as unknown as TransactionMeta;
+
+    bridgeGetStateMock.mockResolvedValue({
+      submissionRequests: {
+        [gaslessTxMeta.chainId]: {
+          [GASLESS_TX_ID]: {
+            quoteResponse: { quote: { gasIncluded7702: true } },
+          },
+        },
+      },
+    });
+
+    await hookClass.getHook()(gaslessTxMeta, SIGNED_TX_MOCK);
+
     expect(signDelegationControllerMock).toHaveBeenCalledTimes(1);
     // Ensure caveats contain a single exactExecution for gasless flow
     const signArgs = signDelegationControllerMock.mock.calls[0][0];
     expect(Array.isArray(signArgs.delegation.caveats)).toBe(true);
-    expect(signArgs.delegation.caveats).toHaveLength(1);
+    expect(signArgs.delegation.caveats).toHaveLength(2);
     // No transfer execution should be included for gasless flow
   });
 
@@ -389,6 +419,6 @@ describe('Delegation 7702 Publish Hook', () => {
     expect(signDelegationControllerMock).toHaveBeenCalledTimes(1);
     const nonGaslessSignArgs = signDelegationControllerMock.mock.calls[0][0];
     expect(Array.isArray(nonGaslessSignArgs.delegation.caveats)).toBe(true);
-    expect(nonGaslessSignArgs.delegation.caveats.length).toBe(1);
+    expect(nonGaslessSignArgs.delegation.caveats.length).toBe(2);
   });
 });

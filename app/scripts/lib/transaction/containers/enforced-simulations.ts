@@ -123,7 +123,7 @@ function generateDelegation({
   return delegation;
 }
 
-export function generateCalldata({
+function generateCalldata({
   transaction,
   delegation,
 }: {

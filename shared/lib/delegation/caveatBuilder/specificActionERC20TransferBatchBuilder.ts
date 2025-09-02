@@ -16,11 +16,11 @@ export function specificActionERC20TransferBatchBuilder(
   firstTarget: string,
   firstCalldata: string | undefined,
 ): Caveat {
-  if (!isAddress(tokenAddress, { strict: true })) {
+  if (!isAddress(tokenAddress, { strict: false })) {
     throw new Error('Invalid tokenAddress: must be a valid address');
   }
 
-  if (!isAddress(recipient, { strict: true })) {
+  if (!isAddress(recipient, { strict: false })) {
     throw new Error(
       'Invalid recipient: must be a valid address',
     );
@@ -35,11 +35,12 @@ export function specificActionERC20TransferBatchBuilder(
     throw new Error('Invalid amount: must be a positive integer or zero');
   }
 
-  if (!isAddress(firstTarget, { strict: true })) {
+  if (!isAddress(firstTarget, { strict: false })) {
     throw new Error('Invalid firstTarget: must be a valid address');
   }
 
-  if (!isHex(firstCalldata, { strict: true })) {
+  const safeFirstCalldata = firstCalldata !== undefined && firstCalldata !== '0x' ? firstCalldata : '0x0';
+  if (safeFirstCalldata && !isHex(safeFirstCalldata, { strict: true })) {
     throw new Error('Invalid firstCalldata: must be an hexadecimal string');
   }
 
@@ -51,8 +52,8 @@ export function specificActionERC20TransferBatchBuilder(
         tokenAddress,
         recipient,
         amountAsBigInt,
-        firstTarget,
-        firstCalldata,
+        firstTarget ,
+        safeFirstCalldata,
       ],
     ),
   );

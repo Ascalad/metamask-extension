@@ -12,6 +12,9 @@ import {
 import { Hex, createProjectLogger } from '@metamask/utils';
 import {
   DeleGatorEnvironment,
+  ExecutionMode,
+  ExecutionStruct,
+  SINGLE_DEFAULT_MODE,
   UnsignedDelegation,
   createCaveatBuilder,
   createDelegation,
@@ -21,15 +24,17 @@ import { exactExecution } from '../../../../../shared/lib/delegation/caveatBuild
 import { limitedCalls } from '../../../../../shared/lib/delegation/caveatBuilder/limitedCallsBuilder';
 import { specificActionERC20TransferBatch } from '../../../../../shared/lib/delegation/caveatBuilder/specificActionERC20TransferBatchBuilder';
 import { TransactionControllerInitMessenger } from '../../../controller-init/messengers/transaction-controller-messenger';
-import { generateCalldata } from '../containers/enforced-simulations';
-import { Caveat } from '../delegation';
+import { Caveat } from '../../../../../shared/lib/delegation';
+import { encodeRedeemDelegations } from '../../../../../shared/lib/delegation/delegation';
 import {
   RelayStatus,
   RelaySubmitRequest,
   submitRelayTransaction,
   waitForRelayResult,
 } from '../transaction-relay';
+import type { Delegation } from '../../../../../shared/lib/delegation/delegation';
 
+const EMPTY_HEX = '0x';
 const POLLING_INTERVAL_MS = 1000; // 1 Second
 
 const EMPTY_RESULT = {
@@ -134,29 +139,20 @@ export class Delegation7702PublishHook {
       throw new Error('Gas fee token not found');
     }
 
-    // here
-    const delegation = this.#buildUnsignedDelegation(
+    const delegations = await this.#buildDelegation(
       delegationEnvironment,
       transactionMeta,
       gasFeeToken,
       includeTransfer,
     );
 
-    log('Signing delegation');
+    const modes: ExecutionMode[] = [SINGLE_DEFAULT_MODE];
+    const executions = this.#buildExecutions(transactionMeta, gasFeeToken, includeTransfer);
 
-    const delegationSignature = (await this.#messenger.call(
-      'DelegationController:signDelegation',
-      {
-        chainId,
-        delegation,
-      },
-    )) as Hex;
-
-    log('Delegation signature', delegationSignature);
-
-    const transactionData = generateCalldata({
-      transaction: txParams,
-      delegation: { ...delegation, signature: delegationSignature },
+    const transactionData = encodeRedeemDelegations({
+      delegations,
+      modes,
+      executions,
     });
 
     const relayRequest: RelaySubmitRequest = {
@@ -189,6 +185,73 @@ export class Delegation7702PublishHook {
     return {
       transactionHash,
     };
+  }
+  async #buildDelegation(
+    delegationEnvironment: DeleGatorEnvironment,
+    transactionMeta: TransactionMeta,
+    gasFeeToken: GasFeeToken | undefined,
+    includeTransfer: boolean,
+  ): Promise<Delegation[][]> {
+    const unsignedDelegation = this.#buildUnsignedDelegation(
+      delegationEnvironment,
+      transactionMeta,
+      gasFeeToken,
+      includeTransfer,
+    );
+
+    log('Signing delegation');
+
+    const delegationSignature = (await this.#messenger.call(
+      'DelegationController:signDelegation',
+      {
+        chainId: transactionMeta.chainId,
+        delegation: unsignedDelegation,
+      },
+    )) as Hex;
+
+    log('Delegation signature', delegationSignature);
+
+    const delegations: Delegation[][] = [[
+      {
+        ...unsignedDelegation,
+
+        signature: delegationSignature,
+      },
+    ]];
+
+    return delegations;
+  }
+
+  #buildExecutions(
+    transactionMeta: TransactionMeta,
+    gasFeeToken: GasFeeToken | undefined,
+    includeTransfer: boolean,
+  ): ExecutionStruct[][] {
+    const { txParams } = transactionMeta;
+    const { data, to, value } = txParams;
+    const userExecution: ExecutionStruct = {
+      target: to as Hex,
+      value: BigInt((value as Hex) ?? '0x0'),
+      callData: (data as Hex) ?? EMPTY_HEX,
+    };
+
+    if (!includeTransfer) {
+      return [[userExecution]];
+    }
+
+    if (!gasFeeToken) {
+      throw new Error('Selected gas fee token not found');
+    }
+
+    const transferExecution: ExecutionStruct = {
+      target: gasFeeToken.tokenAddress,
+      value: BigInt('0x0'),
+      callData: this.#buildTokenTransferData(
+        gasFeeToken.recipient,
+        gasFeeToken.amount,
+      ),
+    };
+    return [[userExecution, transferExecution]];
   }
 
   async #isBridgeTxGasless7702(
@@ -270,7 +333,7 @@ export class Delegation7702PublishHook {
     } else {
       // contract deployments can't be delegated
       if (to !== undefined) {
-        caveatBuilder.addCaveat(exactExecution, to, value ?? '0x0', data);
+        caveatBuilder.addCaveat(exactExecution, to, value ?? '0x0', data ?? '0x');
       }
     }
 
