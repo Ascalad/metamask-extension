@@ -43,7 +43,4 @@ export const Default: Story = {
       </>
     );
   },
-  args: {
-    address: mockAccounts['cf8dace4-9439-4bd4-b3a8-88c821c8fcb3'].address,
-  },
 };

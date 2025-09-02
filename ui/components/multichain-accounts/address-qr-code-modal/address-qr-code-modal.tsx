@@ -19,6 +19,8 @@ import {
 } from '@metamask/design-system-react';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
 import { toEvmCaipChainId } from '@metamask/multichain-network-controller';
+import type { CaipChainId } from '@metamask/utils';
+import { convertCaipToHexChainId } from '../../../../shared/modules/network.utils';
 import {
   Modal,
   ModalOverlay,
@@ -77,37 +79,40 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   );
 
   // Get the network configuration
-  // chainId might be in hex format (0x1) or CAIP format (eip155:1)
+  // chainId might be in hex format (0x1) or CAIP format (eip155:1, solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp, etc.)
   let multichainNetwork = null;
   if (chainId && typeof chainId === 'string') {
-    let caipChainId: string;
+    let lookupChainId: string;
 
-    if (chainId.startsWith('eip155:')) {
-      // Already in CAIP format
-      caipChainId = chainId;
-    } else if (chainId.startsWith('0x')) {
-      // Convert from hex to CAIP format
+    if (chainId.startsWith('0x')) {
+      // Convert hex format to CAIP format for EVM chains
       try {
-        caipChainId = toEvmCaipChainId(chainId);
+        lookupChainId = toEvmCaipChainId(chainId as `0x${string}`);
       } catch (error) {
         console.warn(
           'Invalid hex chainId for CAIP conversion:',
           chainId,
           error,
         );
-        caipChainId = '';
+        lookupChainId = chainId;
       }
     } else {
-      console.warn('Unknown chainId format:', chainId);
-      caipChainId = '';
+      // Non-EVM chains are already in CAIP format, use as-is
+      lookupChainId = chainId;
     }
 
-    if (caipChainId) {
-      multichainNetwork = networkConfigurationsByChainId[caipChainId];
-    }
+    multichainNetwork = networkConfigurationsByChainId[lookupChainId as CaipChainId];
   }
 
-  const networkImageSrc = useSelector(() => getImageForChainId(chainId));
+  // We're mixing hex with caip chain ids so its necessary
+  // to use the hex format for EVMs and caip for non EVMs.
+  const networkImageSrc = useSelector(() =>
+    getImageForChainId(
+      chainId.startsWith('eip155')
+        ? convertCaipToHexChainId(chainId as CaipChainId)
+        : chainId,
+    ),
+  );
 
   const accountName =
     accountInfo?.metadata?.name || account?.metadata?.name || '';
@@ -131,11 +136,15 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   }, [address, handleCopy]);
 
   const getExplorerButtonText = (): string => {
-    if (!multichainNetwork?.blockExplorerUrls?.length) {
+    const blockExplorerUrls = multichainNetwork && 'blockExplorerUrls' in multichainNetwork 
+      ? multichainNetwork.blockExplorerUrls 
+      : [];
+      
+    if (!blockExplorerUrls?.length) {
       return t('viewOnExplorer');
     }
 
-    const explorerUrl = multichainNetwork.blockExplorerUrls[0];
+    const explorerUrl = blockExplorerUrls[0];
     if (explorerUrl.includes('etherscan')) {
       return t('viewAddressOnExplorer', ['Etherscan']);
     }
@@ -155,11 +164,15 @@ export const AddressQRCodeModal: React.FC<AddressQRCodeModalProps> = ({
   };
 
   const handleExplorerNavigation = useCallback(() => {
-    if (!multichainNetwork?.blockExplorerUrls?.length) {
+    const blockExplorerUrls = multichainNetwork && 'blockExplorerUrls' in multichainNetwork 
+      ? multichainNetwork.blockExplorerUrls 
+      : [];
+      
+    if (!blockExplorerUrls?.length) {
       return;
     }
 
-    const explorerUrl = multichainNetwork.blockExplorerUrls[0];
+    const explorerUrl = blockExplorerUrls[0];
     const addressLink = `${explorerUrl.replace(/\/$/, '')}/address/${address}`;
 
     openBlockExplorer(addressLink, 'Address QR Code Modal', trackEvent);

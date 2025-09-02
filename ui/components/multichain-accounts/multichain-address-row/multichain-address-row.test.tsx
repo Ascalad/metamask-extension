@@ -18,6 +18,7 @@ const mockAccount = {
   scopes: ['eip155:1' as const],
   metadata: {
     name: 'Test Account',
+    importTime: Date.now(),
     keyring: {
       type: 'HD Key Tree',
     },

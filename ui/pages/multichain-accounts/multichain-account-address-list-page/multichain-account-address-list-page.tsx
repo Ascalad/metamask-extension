@@ -66,7 +66,6 @@ export const MultichainAccountAddressListPage = () => {
     address?: string;
     chainId?: string;
     account?: InternalAccount;
-    accountGroupName?: string;
   }>({ isOpen: false });
 
   const handleQrClick = (
@@ -79,7 +78,6 @@ export const MultichainAccountAddressListPage = () => {
       address,
       chainId,
       account,
-      accountGroupName: accountGroup?.metadata?.name,
     });
   };
 
@@ -121,7 +119,6 @@ export const MultichainAccountAddressListPage = () => {
             address={qrModal.address}
             chainId={qrModal.chainId}
             account={qrModal.account}
-            accountGroupName={qrModal.accountGroupName}
           />
         )}
       </Content>
